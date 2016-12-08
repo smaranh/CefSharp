@@ -16,6 +16,8 @@
 
 using namespace System::Runtime::InteropServices;
 
+#include "Safe/CefRequestContextHandlerSafe.h"
+
 namespace CefSharp
 {
     /// <summary>
@@ -59,12 +61,12 @@ namespace CefSharp
         RequestContext(IRequestContextHandler^ requestContextHandler)
         {
             CefRequestContextSettings settings;
-            _requestContext = CefRequestContext::CreateContext(settings, new RequestContextHandler(requestContextHandler));
+			_requestContext = CefRequestContext::CreateContext(settings, new CefRequestContextHandlerSafe(new RequestContextHandler(requestContextHandler)));
         }
 
         RequestContext(RequestContextSettings^ settings, IRequestContextHandler^ requestContextHandler) : _settings(settings)
         {
-            _requestContext = CefRequestContext::CreateContext(settings, new RequestContextHandler(requestContextHandler));
+			_requestContext = CefRequestContext::CreateContext(settings, new CefRequestContextHandlerSafe(new RequestContextHandler(requestContextHandler)));
         }
 
         !RequestContext()

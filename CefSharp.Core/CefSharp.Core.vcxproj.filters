@@ -275,9 +275,9 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
+    <Text Include="handlers.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="handlers.txt" />
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

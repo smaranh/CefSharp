@@ -36,7 +36,9 @@ If you have a simple question please start by asking it on [![Gitter](https://ba
 
 ## Branches & Forks
 
-This is the `official` CefSharp fork, as maintained by the CefSharp community. You can also view [the entire network of public forks/branches](https://github.com/cefsharp/CefSharp/network).
+This is the `official` CefSharp fork, as maintained by the CefSharp community. You can also view [the entire network of public forks/branches](https://github.com/search?utf8=%E2%9C%93&q=cefsharp+fork%3Atrue&type=Repositories&ref=searchresults).
+
+*Note* Due to so many Forks - Github can't process them through the `Network Graphs` Section so, if you need to do a search use the following: `cefsharp fork:true` and it will be able to process all of the forks. 
 
 Development is done in the `master` branch. New features are preferably added in feature branches, if the changes are more than trivial. New `PR's` should be targeted against `master`.
 
@@ -70,10 +72,16 @@ Every commit on `master` produces a `Nuget` package. Use at your own risk! [CefS
 | [cefsharp/39](https://github.com/cefsharp/CefSharp/tree/cefsharp/39) | 2171 | 2012 | 4.0   | Unsupported |
 | [cefsharp/37](https://github.com/cefsharp/CefSharp/tree/cefsharp/37) | 2062 | 2013 | 4.0   | Unsupported |
 
+## Financial Support
+
+Creating regular releases of CefSharp is a time intensive process and so to support further development we ask if can contribute financially to the next release?
+
+[![Bountysource](https://api.bountysource.com/badge/issue?issue_id=40201096)](https://www.bountysource.com/issues/40201096-feature-request-release-55-0-0?utm_source=40201096&utm_medium=shield&utm_campaign=ISSUE_BADGE)
+
 ## Links
 
 - [CefGlue](https://bitbucket.org/xilium/xilium.cefglue/): An alternative .NET CEF wrapper built using P/Invoke.
 - [ChromiumFx](https://bitbucket.org/chromiumfx/chromiumfx) : Another P/Invoke .Net CEF wrapper
 - [CEF Forum](http://magpcss.org/ceforum/) : The official CEF Forum
-- [CEF API Docs] (http://magpcss.org/ceforum/apidocs3/index-all.html) : Well worth a read if your implementing a new feature
+- [CEF API Docs] (http://magpcss.org/ceforum/apidocs3/index-all.html) : Well worth a read if you are implementing a new feature
 

@@ -1,4 +1,4 @@
-// Copyright © 2010-2016 The CefSharp Authors. All rights reserved.
+// Copyright © 2010-2017 The CefSharp Authors. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
@@ -16,7 +16,8 @@
 #include "Internals/CefSharpApp.h"
 #include "Internals/PluginVisitor.h"
 #include "Internals/CefTaskScheduler.h"
-#include "Internals/CefGetGeolocationCallbackWrapper.h"
+#include "Internals/CefGetGeolocationCallbackAdapter.h"
+#include "Internals/CefRegisterCdmCallbackAdapter.h"
 #include "CookieManager.h"
 #include "CefSettings.h"
 #include "RequestContext.h"
@@ -183,6 +184,16 @@ namespace CefSharp
             if(performDependencyCheck)
             {
                 DependencyChecker::AssertAllDependenciesPresent(cefSettings->Locale, cefSettings->LocalesDirPath, cefSettings->ResourcesDirPath, cefSettings->PackLoadingDisabled, cefSettings->BrowserSubprocessPath);
+            }
+
+            if (CefSharpSettings::Proxy != nullptr && !cefSettings->CommandLineArgsDisabled)
+            {
+                cefSettings->CefCommandLineArgs->Add("proxy-server", CefSharpSettings::Proxy->IP + ":" + CefSharpSettings::Proxy->Port);
+
+                if (!String::IsNullOrEmpty(CefSharpSettings::Proxy->BypassList))
+                {
+                    cefSettings->CefCommandLineArgs->Add("proxy-bypass-list", CefSharpSettings::Proxy->BypassList);
+                }
             }
 
             UIThreadTaskFactory = gcnew TaskFactory(gcnew CefTaskScheduler(TID_UI));
@@ -437,18 +448,32 @@ namespace CefSharp
         }
 
         /// <summary>
+        /// Visit web plugin information. Can be called on any thread in the browser process.
+        /// </summary>
+        static void VisitWebPluginInfo(IWebPluginInfoVisitor^ visitor)
+        {
+            CefVisitWebPluginInfo(new PluginVisitor(visitor));
+        }
+
+        /// <summary>
         /// Async returns a list containing Plugin Information
         /// (Wrapper around CefVisitWebPluginInfo)
         /// </summary>
         /// <return>Returns List of <see cref="Plugin"/> structs.</return>
-        static Task<List<Plugin>^>^ GetPlugins()
+        static Task<List<WebPluginInfo^>^>^ GetPlugins()
         {
-            auto pluginVisitor = new PluginVisitor();
+            /*auto pluginVisitor = new PluginVisitor();
             CefRefPtr<CefWebPluginInfoVisitorSafe> visitor = new CefWebPluginInfoVisitorSafe(pluginVisitor);
             
             CefVisitWebPluginInfo(visitor);
 
-            return pluginVisitor->GetTask();
+            return pluginVisitor->Task;*/
+             auto taskVisitor = gcnew TaskWebPluginInfoVisitor();
+             CefRefPtr<PluginVisitor> visitor = new PluginVisitor(taskVisitor);
+            
+             CefVisitWebPluginInfo(visitor);
+
+             return taskVisitor->Task;
         }
 
         /// <summary>
@@ -466,7 +491,7 @@ namespace CefSharp
         static void UnregisterInternalWebPlugin(String^ path)
         {
             CefUnregisterInternalWebPlugin(StringUtils::ToNative(path));
-        }	
+        }
 
         /// <summary>
         /// Call during process startup to enable High-DPI support on Windows 7 or newer.
@@ -484,13 +509,26 @@ namespace CefSharp
         /// used by code that is allowed to access location information. 
         /// </summary>
         /// <return>Returns 'best available' location info or, if the location update failed, with error info.</return>
+        static bool GetGeolocation(IGetGeolocationCallback^ callback)
+        {
+            CefRefPtr<CefGetGeolocationCallback> wrapper = callback == nullptr ? NULL : new CefGetGeolocationCallbackAdapter(callback);
+
+            return CefGetGeolocation(wrapper);
+        }
+
+        /// <summary>
+        /// Request a one-time geolocation update.
+        /// This function bypasses any user permission checks so should only be
+        /// used by code that is allowed to access location information. 
+        /// </summary>
+        /// <return>Returns 'best available' location info or, if the location update failed, with error info.</return>
         static Task<Geoposition^>^ GetGeolocationAsync()
         {
-            auto callback = new CefGetGeolocationCallbackWrapper();
+            auto callback = gcnew TaskGetGeolocationCallback();
             
-            CefGetGeolocation(callback);
+            GetGeolocation(callback);
 
-            return callback->GetTask();
+            return callback->Task;
         }
 
         /// <summary>
@@ -519,9 +557,8 @@ namespace CefSharp
         }
 
         /// <summary>
-        ///
         /// Crash reporting is configured using an INI-style config file named
-        /// "crash_reporter.cfg". This file must be placed next to
+        /// crash_reporter.cfg. This file must be placed next to
         /// the main application executable. File contents are as follows:
         ///
         ///  # Comments start with a hash character and must be on their own line.
@@ -611,6 +648,75 @@ namespace CefSharp
         static void SetCrashKeyValue(String^ key, String^ value)
         {
             CefSetCrashKeyValue(StringUtils::ToNative(key), StringUtils::ToNative(value));
+        }
+
+        /// <summary>
+        /// Register the Widevine CDM plugin.
+        /// 
+        /// The client application is responsible for downloading an appropriate
+        /// platform-specific CDM binary distribution from Google, extracting the
+        /// contents, and building the required directory structure on the local machine.
+        /// The <see cref="IBrowserHost.StartDownload"/> method class can be used
+        /// to implement this functionality in CefSharp. Contact Google via
+        /// https://www.widevine.com/contact.html for details on CDM download.
+        /// 
+        /// 
+        /// path is a directory that must contain the following files:
+        ///   1. manifest.json file from the CDM binary distribution (see below).
+        ///   2. widevinecdm file from the CDM binary distribution (e.g.
+        ///      widevinecdm.dll on Windows).
+        ///   3. widevidecdmadapter file from the CEF binary distribution (e.g.
+        ///      widevinecdmadapter.dll on Windows).
+        ///
+        /// If any of these files are missing or if the manifest file has incorrect
+        /// contents the registration will fail and callback will receive an ErrorCode
+        /// value of <see cref="CdmRegistrationErrorCode.IncorrectContents"/>.
+        ///
+        /// The manifest.json file must contain the following keys:
+        ///   A. "os": Supported OS (e.g. "mac", "win" or "linux").
+        ///   B. "arch": Supported architecture (e.g. "ia32" or "x64").
+        ///   C. "x-cdm-module-versions": Module API version (e.g. "4").
+        ///   D. "x-cdm-interface-versions": Interface API version (e.g. "8").
+        ///   E. "x-cdm-host-versions": Host API version (e.g. "8").
+        ///   F. "version": CDM version (e.g. "1.4.8.903").
+        ///   G. "x-cdm-codecs": List of supported codecs (e.g. "vp8,vp9.0,avc1").
+        ///
+        /// A through E are used to verify compatibility with the current Chromium
+        /// version. If the CDM is not compatible the registration will fail and
+        /// callback will receive an ErrorCode value of <see cref="CdmRegistrationErrorCode.Incompatible"/>.
+        ///
+        /// If registration is not supported at the time that Cef.RegisterWidevineCdm() is called then callback
+        /// will receive an ErrorCode value of <see cref="CdmRegistrationErrorCode.NotSupported"/>.
+        /// </summary>
+        /// <param name="path"> is a directory that contains the Widevine CDM files</param>
+        /// <param name="callback">optional callback - <see cref="IRegisterCdmCallback.OnRegistrationCompletecallback"/> 
+        /// will be executed asynchronously once registration is complete</param>
+        static void RegisterWidevineCdm(String^ path, [Optional] IRegisterCdmCallback^ callback)
+        {
+            CefRefPtr<CefRegisterCdmCallbackAdapter> adapter = NULL;
+
+            if (callback != nullptr)
+            {
+                adapter = new CefRegisterCdmCallbackAdapter(callback);
+            }
+
+            CefRegisterWidevineCdm(StringUtils::ToNative(path), adapter);
+        }
+
+        /// <summary>
+        /// Register the Widevine CDM plugin.
+        ///
+        /// See <see cref="RegisterWidevineCdm(String, IRegisterCdmCallback)"/> for more details.
+        /// </summary>
+        /// <param name="path"> is a directory that contains the Widevine CDM files</param>
+        /// <return>Returns a Task that can be awaited to receive the <see cref="CdmRegistration"/> response.</return>
+        static Task<CdmRegistration^>^ RegisterWidevineCdmAsync(String^ path)
+        {
+            auto callback = gcnew TaskRegisterCdmCallback();
+            
+            RegisterWidevineCdm(path, callback);
+
+            return callback->Task;
         }
     };
 }

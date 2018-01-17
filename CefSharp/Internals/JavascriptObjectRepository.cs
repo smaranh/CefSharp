@@ -1,4 +1,4 @@
-﻿// Copyright © 2010-2016 The CefSharp Authors. All rights reserved.
+﻿// Copyright © 2010-2017 The CefSharp Authors. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
@@ -89,6 +89,7 @@ namespace CefSharp.Internals
             jsObject.Name = name;
             jsObject.JavascriptName = name;
             jsObject.Binder = options == null ? null : options.Binder;
+            jsObject.MethodInterceptor = options == null ? null : options.MethodInterceptor;
 
             AnalyseObjectForBinding(jsObject, analyseMethods: true, analyseProperties: analyseProperties, readPropertyValue: false, camelCaseJavascriptNames: camelCaseJavascriptNames);
 
@@ -173,25 +174,32 @@ namespace CefSharp.Internals
                             { 
                                 var paramType = method.Parameters[i].Type;
 
-                                if(parameters[i].GetType() == typeof(Dictionary<string, object>))
+                                if(typeof(IDictionary<string, object>).IsAssignableFrom(parameters[i].GetType()))
                                 {
-                                    var dictionary = (Dictionary<string, object>)parameters[i];
+                                    var dictionary = (IDictionary<string, object>)parameters[i];
                                     parameters[i] = obj.Binder.Bind(dictionary, paramType);
                                 }
-                                else if (parameters[i].GetType() == typeof(List<object>))
+                                else if (typeof(IList<object>).IsAssignableFrom(parameters[i].GetType()))
                                 {
-                                    var list = (List<object>)parameters[i];
+                                    var list = (IList<object>)parameters[i];
                                     parameters[i] = obj.Binder.Bind(list, paramType);
                                 }
                             }
                         }
                     }
 
-                    result = method.Function(obj.Value, parameters);
+                    if (obj.MethodInterceptor == null) 
+                    {
+                        result = method.Function(obj.Value, parameters);
+                    }
+                    else 
+                    {
+                        result = obj.MethodInterceptor.Intercept(() => method.Function(obj.Value, parameters), method.ManagedName);
+                    }
                 }
                 catch (Exception e)
                 {
-                    throw new InvalidOperationException("Could not execute method: " + name + "(" + String.Join(", ", parameters) + ")" + " - Missing Parameters: " + missingParams, e);
+                    throw new InvalidOperationException("Could not execute method: " + name + "(" + String.Join(", ", parameters) + ") " + (missingParams > 0 ? "- Missing Parameters: " + missingParams : ""), e);
                 }
 
                 if(result != null && IsComplexType(result.GetType()))
@@ -397,7 +405,12 @@ namespace CefSharp.Internals
                 baseType = Nullable.GetUnderlyingType(type);
             }
 
-            if (baseType == null || baseType.Namespace.StartsWith("System"))
+            if (baseType == null || baseType.IsArray || baseType.Namespace.StartsWith("System"))
+            {
+                return false;
+            }
+
+            if (baseType.IsValueType && !baseType.IsPrimitive && !baseType.IsEnum)
             {
                 return false;
             }

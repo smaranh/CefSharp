@@ -1,4 +1,4 @@
-﻿// Copyright © 2010-2016 The CefSharp Authors. All rights reserved.
+﻿// Copyright © 2010-2017 The CefSharp Authors. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
@@ -17,10 +17,6 @@ namespace CefSharp
         bool MenuBarVisible { get; }
         bool StatusBarVisible { get; }
         bool ToolBarVisible { get; }
-        bool LocationBarVisible { get; }
         bool ScrollbarsVisible { get; }
-        bool Resizable { get; }
-        bool Fullscreen { get; }
-        bool Dialog { get; }
     }
 }

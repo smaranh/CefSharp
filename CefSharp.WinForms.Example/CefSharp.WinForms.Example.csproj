@@ -22,6 +22,7 @@
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
     <TargetFrameworkProfile />
     <NuGetPackageImportStamp>1e004422</NuGetPackageImportStamp>
+    <NuGetPackageImportStamp>29362f7d</NuGetPackageImportStamp>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <PlatformTarget>x64</PlatformTarget>
@@ -187,4 +188,6 @@
   <Import Project="..\packages\cef.redist.x86.3.2272.30\build\cef.redist.x86.targets" Condition="Exists('..\packages\cef.redist.x86.3.2272.30\build\cef.redist.x86.targets')" />
   <Import Project="..\packages\cef.redist.x64.3.2883.1552\build\cef.redist.x64.targets" Condition="Exists('..\packages\cef.redist.x64.3.2883.1552\build\cef.redist.x64.targets')" />
   <Import Project="..\packages\cef.redist.x86.3.2883.1552\build\cef.redist.x86.targets" Condition="Exists('..\packages\cef.redist.x86.3.2883.1552\build\cef.redist.x86.targets')" />
+  <Import Project="..\packages\cef.redist.x64.3.3239.1716\build\cef.redist.x64.targets" Condition="Exists('..\packages\cef.redist.x64.3.3239.1716\build\cef.redist.x64.targets')" />
+  <Import Project="..\packages\cef.redist.x86.3.3239.1716\build\cef.redist.x86.targets" Condition="Exists('..\packages\cef.redist.x86.3.3239.1716\build\cef.redist.x86.targets')" />
 </Project>
